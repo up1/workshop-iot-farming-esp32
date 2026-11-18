@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 DHT11 Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>ESP32 · DHT11 Monitor</h1>
+    <span id="status" class="status">waiting…</span>
+  </header>
+
+  <main>
+    <section class="cards">
+      <div class="card temp">
+        <div class="label">Temperature</div>
+        <div class="value"><span id="temp"><%= latest ? latest.temperature.toFixed(1) : '--' %></span><small>°C</small></div>
+      </div>
+      <div class="card hum">
+        <div class="label">Humidity</div>
+        <div class="value"><span id="hum"><%= latest ? latest.humidity.toFixed(0) : '--' %></span><small>%</small></div>
+      </div>
+      <div class="card">
+        <div class="label">Last 24h temp (min / avg / max)</div>
+        <div class="small-value" id="stat-t">
+          <% if (stats && stats.total) { %><%= stats.min_t.toFixed(1) %> / <%= stats.avg_t.toFixed(1) %> / <%= stats.max_t.toFixed(1) %> °C<% } else { %>--<% } %>
+        </div>
+        <div class="label" style="margin-top:.75rem">Last 24h humidity (min / avg / max)</div>
+        <div class="small-value" id="stat-h">
+          <% if (stats && stats.total) { %><%= stats.min_h.toFixed(0) %> / <%= stats.avg_h.toFixed(0) %> / <%= stats.max_h.toFixed(0) %> %<% } else { %>--<% } %>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <canvas id="chart" height="110"></canvas>
+    </section>
+
+    <section class="panel">
+      <h2>Latest readings</h2>
+      <table>
+        <thead><tr><th>Time</th><th>Device</th><th>Temp (°C)</th><th>Humidity (%)</th></tr></thead>
+        <tbody id="rows">
+          <% readings.forEach(r => { %>
+            <tr>
+              <td data-utc="<%= r.created_at %>"><%= r.created_at %></td>
+              <td><%= r.device_id %></td>
+              <td><%= r.temperature.toFixed(1) %></td>
+              <td><%= r.humidity.toFixed(0) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const REFRESH_MS = 5000;
+    const fmtTime = iso => new Date(iso).toLocaleString();
+
+    const chart = new Chart(document.getElementById('chart'), {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          { label: 'Temperature (°C)', data: [], borderColor: '#ef4444', yAxisID: 'yT', tension: .3, pointRadius: 0 },
+          { label: 'Humidity (%)',     data: [], borderColor: '#3b82f6', yAxisID: 'yH', tension: .3, pointRadius: 0 },
+        ],
+      },
+      options: {
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          yT: { type: 'linear', position: 'left',  title: { display: true, text: '°C' } },
+          yH: { type: 'linear', position: 'right', title: { display: true, text: '%' }, grid: { drawOnChartArea: false } },
+        },
+      },
+    });
+
+    async function refresh() {
+      try {
+        const res = await fetch('/api/readings?limit=200');
+        const data = await res.json();
+        chart.data.labels = data.map(r => new Date(r.created_at).toLocaleTimeString());
+        chart.data.datasets[0].data = data.map(r => r.temperature);
+        chart.data.datasets[1].data = data.map(r => r.humidity);
+        chart.update();
+
+        const last = data[data.length - 1];
+        if (last) {
+          document.getElementById('temp').textContent = last.temperature.toFixed(1);
+          document.getElementById('hum').textContent = last.humidity.toFixed(0);
+          const ageSec = (Date.now() - new Date(last.created_at)) / 1000;
+          const st = document.getElementById('status');
+          st.textContent = ageSec < 120 ? 'online' : 'offline (last seen ' + fmtTime(last.created_at) + ')';
+          st.className = 'status ' + (ageSec < 120 ? 'ok' : 'bad');
+        }
+
+        const rows = data.slice(-20).reverse().map(r =>
+          `<tr><td>${fmtTime(r.created_at)}</td><td>${r.device_id}</td><td>${r.temperature.toFixed(1)}</td><td>${r.humidity.toFixed(0)}</td></tr>`
+        ).join('');
+        document.getElementById('rows').innerHTML = rows;
+      } catch (e) {
+        const st = document.getElementById('status');
+        st.textContent = 'server unreachable'; st.className = 'status bad';
+      }
+    }
+
+    document.querySelectorAll('td[data-utc]').forEach(td => td.textContent = fmtTime(td.dataset.utc));
+    refresh();
+    setInterval(refresh, REFRESH_MS);
+  </script>
+</body>
+</html>

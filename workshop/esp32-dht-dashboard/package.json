@@ -1,0 +1,16 @@
+{
+  "name": "esp32-dht-dashboard",
+  "version": "1.0.0",
+  "description": "Receive DHT11 temperature/humidity from ESP32 over REST, store in SQLite, show in a dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.2"
+  }
+}

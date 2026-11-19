@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package hello;
+
+// Sent by the ESP32 in POST /hello
+message HelloRequest {
+  string message = 1;
+  string device = 2;
+}
+
+// Returned by GET /hello and POST /hello
+message HelloResponse {
+  string status = 1;
+  string reply = 2;
+  string received_at = 3;
+}
+
+// Returned on 4xx / 5xx
+message ErrorResponse {
+  string error = 1;
+}

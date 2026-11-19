@@ -1,0 +1,16 @@
+{
+  "name": "protobuf_rest",
+  "version": "1.0.0",
+  "description": "REST API using Protocol Buffers instead of JSON",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test.js"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.1.0",
+    "protobufjs": "^7.4.0"
+  }
+}

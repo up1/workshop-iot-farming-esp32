@@ -5,7 +5,7 @@
 
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
-const char* mqttHost = "192.168.1.100"; // IP of the machine running the broker
+const char* mqttHost = "178.128.80.30"; // IP of the machine running the broker
 const int mqttPort = 1883;
 const char* topic = "workshop/esp32/hello";
 const char* deviceId = "esp32-123";

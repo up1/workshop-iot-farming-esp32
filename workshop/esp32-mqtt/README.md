@@ -18,5 +18,10 @@ Message (JSON, `timestamp` = Unix epoch seconds from NTP):
    (set `BROKER_URL=mqtt://host:1883` if the broker is remote)
 3. ESP32: install the **PubSubClient** library, edit WiFi + `mqttHost` in [esp32/esp32.ino](esp32/esp32.ino), upload.
 
+4. Access to [mqtt's ui](https://github.com/terdia/mqttui)
+   * http://localhost:5000
+   * user=admin
+   * pass=admin
+
 Quick test without hardware:
 `docker compose exec mosquitto mosquitto_pub -t workshop/esp32/hello -m '{"device_id":"esp32-123","message":"Hello with timestamp","timestamp":1763549000}'`

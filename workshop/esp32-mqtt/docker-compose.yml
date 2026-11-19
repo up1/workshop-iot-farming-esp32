@@ -5,3 +5,9 @@ services:
       - "1883:1883"
     volumes:
       - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  mqtt-ui:
+    image: terdia07/mqttui
+    environment:
+      - MQTT_BROKER=mosquitto
+    ports:
+      - "5000:5000"

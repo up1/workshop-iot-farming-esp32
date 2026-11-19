@@ -1,0 +1,7 @@
+{
+  "name": "esp32-mqtt",
+  "version": "1.0.0",
+  "description": "ESP32 publisher -> MQTT broker <- 2 consumers",
+  "private": true,
+  "workspaces": ["consumer1", "consumer2"]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "compare_rest_coap_protobuf",
+  "version": "1.0.0",
+  "description": "Compare payload size and speed: HTTP REST (JSON) vs CoAP vs Protobuf",
+  "main": "bench.js",
+  "scripts": {
+    "start": "node bench.js",
+    "bench": "node bench.js"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "coap": "^1.6.0",
+    "coap-packet": "^1.1.1",
+    "express": "^5.1.0",
+    "protobufjs": "^7.4.0"
+  }
+}

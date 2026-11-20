@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MQTT DHT Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>ESP32 · DHT · MQTT Monitor</h1>
+    <span>
+      <span id="mqtt" class="status">broker: …</span>
+      <span id="status" class="status">waiting…</span>
+    </span>
+  </header>
+
+  <main>
+    <section class="cards">
+      <div class="card temp">
+        <div class="label">Temperature</div>
+        <div class="value"><span id="temp">--</span><small>°C</small></div>
+      </div>
+      <div class="card hum">
+        <div class="label">Humidity</div>
+        <div class="value"><span id="hum">--</span><small>%</small></div>
+      </div>
+      <div class="card">
+        <div class="label">Last 24h temp (min / avg / max)</div>
+        <div class="small-value" id="stat-t">--</div>
+        <div class="label" style="margin-top:.75rem">Last 24h humidity (min / avg / max)</div>
+        <div class="small-value" id="stat-h">--</div>
+        <div class="label" style="margin-top:.75rem">Device · topic</div>
+        <div class="small-value" id="meta">--</div>
+      </div>
+    </section>
+
+    <section class="panel"><canvas id="chart" height="110"></canvas></section>
+
+    <section class="panel">
+      <h2>Latest messages</h2>
+      <table>
+        <thead><tr><th>Time</th><th>Device</th><th>Temp (°C)</th><th>Humidity (%)</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const MAX_POINTS = 200, MAX_ROWS = 20, OFFLINE_SEC = 60;
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let readings = [];
+    let lastTs = null;
+
+    const chart = new Chart($('chart'), {
+      type: 'line',
+      data: { labels: [], datasets: [
+        { label: 'Temperature (°C)', data: [], borderColor: '#ef4444', yAxisID: 'yT', tension: .3, pointRadius: 0 },
+        { label: 'Humidity (%)',     data: [], borderColor: '#3b82f6', yAxisID: 'yH', tension: .3, pointRadius: 0 },
+      ]},
+      options: {
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          yT: { type: 'linear', position: 'left',  title: { display: true, text: '°C' } },
+          yH: { type: 'linear', position: 'right', title: { display: true, text: '%' }, grid: { drawOnChartArea: false } },
+        },
+      },
+    });
+
+    function render() {
+      chart.data.labels = readings.map(r => new Date(r.created_at).toLocaleTimeString());
+      chart.data.datasets[0].data = readings.map(r => r.temp_c);
+      chart.data.datasets[1].data = readings.map(r => r.humidity);
+      chart.update();
+
+      $('rows').innerHTML = readings.slice(-MAX_ROWS).reverse().map(r =>
+        `<tr><td>${new Date(r.created_at).toLocaleString()}</td><td>${esc(r.device_id)}</td><td>${r.temp_c.toFixed(1)}</td><td>${r.humidity.toFixed(1)}</td></tr>`
+      ).join('');
+
+      const last = readings[readings.length - 1];
+      if (last) {
+        $('temp').textContent = last.temp_c.toFixed(1);
+        $('hum').textContent = last.humidity.toFixed(0);
+        $('meta').textContent = last.device_id;
+        lastTs = new Date(last.created_at);
+      }
+      updateStatus();
+    }
+
+    function updateStatus() {
+      const st = $('status');
+      if (!lastTs) return;
+      const age = (Date.now() - lastTs) / 1000;
+      st.textContent = age < OFFLINE_SEC ? 'device online' : 'device offline (last ' + lastTs.toLocaleTimeString() + ')';
+      st.className = 'status ' + (age < OFFLINE_SEC ? 'ok' : 'bad');
+    }
+
+    async function loadStats() {
+      const s = await (await fetch('/api/stats')).json();
+      if (!s || !s.total) return;
+      $('stat-t').textContent = `${s.min_t.toFixed(1)} / ${s.avg_t.toFixed(1)} / ${s.max_t.toFixed(1)} °C`;
+      $('stat-h').textContent = `${s.min_h.toFixed(0)} / ${s.avg_h.toFixed(0)} / ${s.max_h.toFixed(0)} %`;
+    }
+
+    async function loadStatus() {
+      try {
+        const s = await (await fetch('/api/status')).json();
+        $('mqtt').textContent = 'broker: ' + (s.mqtt ? 'connected' : 'disconnected');
+        $('mqtt').className = 'status ' + (s.mqtt ? 'ok' : 'bad');
+        if (!lastTs) $('meta').textContent = s.topic;
+      } catch {
+        $('mqtt').textContent = 'server unreachable'; $('mqtt').className = 'status bad';
+      }
+    }
+
+    async function init() {
+      readings = await (await fetch('/api/readings?limit=' + MAX_POINTS)).json();
+      render(); loadStats(); loadStatus();
+
+      // Live updates pushed from the server whenever an MQTT message arrives
+      const es = new EventSource('/api/stream');
+      es.onmessage = e => {
+        readings.push(JSON.parse(e.data));
+        if (readings.length > MAX_POINTS) readings.shift();
+        render(); loadStats();
+      };
+    }
+
+    init();
+    setInterval(updateStatus, 5000);
+    setInterval(loadStatus, 5000);
+  </script>
+</body>
+</html>

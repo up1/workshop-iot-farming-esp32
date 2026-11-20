@@ -1,0 +1,18 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+  dashboard:
+    build: .
+    environment:
+      - MQTT_URL=mqtt://mosquitto:1883
+      - MQTT_TOPIC=esp32/dht
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mosquitto

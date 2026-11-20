@@ -1,0 +1,12 @@
+{
+  "name": "mqtt-dht-dashboard",
+  "version": "1.0.0",
+  "description": "Subscribe to esp32/dht on an MQTT broker, store in SQLite, live dashboard via SSE",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mqtt": "^5.10.0"
+  }
+}
